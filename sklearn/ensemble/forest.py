@@ -52,6 +52,7 @@ from scipy.sparse import hstack as sparse_hstack
 
 from ..base import ClassifierMixin, RegressorMixin
 from ..externals.joblib import Parallel, delayed
+from ..externals.joblib.parallel import _backend
 from ..externals import six
 from ..metrics import r2_score
 from ..preprocessing import OneHotEncoder
@@ -72,6 +73,12 @@ __all__ = ["RandomForestClassifier",
            "RandomTreesEmbedding"]
 
 MAX_INT = np.iinfo(np.int32).max
+
+
+def active_backend_or(default):
+    """If there is an active joblib backend use that, otherwise use the
+    default"""
+    return getattr(_backend, 'backend_and_jobs', (default, None))[0]
 
 
 def _generate_sample_indices(random_state, n_samples):
@@ -320,7 +327,7 @@ class BaseForest(six.with_metaclass(ABCMeta, BaseEnsemble)):
             # making threading always more efficient than multiprocessing in
             # that case.
             trees = Parallel(n_jobs=self.n_jobs, verbose=self.verbose,
-                             backend="threading")(
+                             backend=active_backend_or("threading"))(
                 delayed(_parallel_build_trees)(
                     t, self, X, y, sample_weight, i, len(trees),
                     verbose=self.verbose, class_weight=self.class_weight)
